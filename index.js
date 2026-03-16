@@ -1,10 +1,16 @@
-const express = require('express');
+import "dotenv/config";
+import express from "express";
+import userRoutes from "./routes/user.route.js";
+
 const app = express();
+const PORT = process.env.PORT || 3000; // Make port configurable via env
 
-app.get('/', (req, res) => {
-    res.send('Hello World!');
-});
+// Body parser
+app.use(express.json());
 
-app.listen(3000, () => {
-    console.log('Server is running on port 3000');
+// Routes
+app.use("/users", userRoutes);
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

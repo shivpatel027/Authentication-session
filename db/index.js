@@ -1,7 +1,10 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 
-const db = drizzle(process.env.DATABASE_URL);
+const connectionString = process.env.DATABASE_URL;
 
-const result = await db.execute('select 1');
+const client = postgres(connectionString);
+
+const db = drizzle(client);
 
 export default db;
