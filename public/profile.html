@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile — AuthKit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #111118; --surface2: #16161f;
+      --border: #1e1e2e; --accent: #6c63ff; --accent-glow: rgba(108,99,255,0.25);
+      --text: #f0f0f5; --muted: #6b6b80; --error: #ff4d6d; --success: #3dffa0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); min-height: 100vh; }
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px; opacity: 0.3; pointer-events: none;
+    }
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 240px;
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 28px 20px; z-index: 10;
+    }
+    .logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; margin-bottom: 40px; }
+    .logo-dot { width: 9px; height: 9px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+    .nav { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted); transition: all 0.15s; text-decoration: none; }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: rgba(108,99,255,0.15); color: var(--accent); }
+    .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+    .sidebar-footer { border-top: 1px solid var(--border); padding-top: 20px; }
+    .user-chip { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface2); margin-bottom: 10px; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #a78bfa); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .user-info { overflow: hidden; }
+    .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .logout-btn { width: 100%; padding: 10px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+    .logout-btn:hover { border-color: var(--error); color: var(--error); background: rgba(255,77,109,0.05); }
+    .main { margin-left: 240px; padding: 40px; position: relative; z-index: 1; max-width: 700px; }
+    .page-header { margin-bottom: 36px; }
+    .page-header h1 { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+    .page-header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .profile-hero {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 32px; margin-bottom: 24px;
+      display: flex; align-items: center; gap: 24px;
+      animation: fadeUp 0.4s ease both;
+    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .profile-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700;
+      color: #fff; flex-shrink: 0;
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+    .profile-info h2 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; }
+    .profile-info p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px; margin-bottom: 24px; animation: fadeUp 0.4s ease 0.1s both; }
+    .card-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 20px; }
+    .field { margin-bottom: 18px; }
+    label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+    input {
+      width: 100%; padding: 12px 16px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    input[readonly] { opacity: 0.5; cursor: not-allowed; }
+    input::placeholder { color: var(--muted); }
+    .btn {
+      padding: 12px 24px; background: var(--accent); color: #fff;
+      border: none; border-radius: 10px; cursor: pointer;
+      font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600;
+      transition: opacity 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .alert.error { background: rgba(255,77,109,0.1); border: 1px solid rgba(255,77,109,0.3); color: var(--error); }
+    .alert.success { background: rgba(61,255,160,0.1); border: 1px solid rgba(61,255,160,0.3); color: var(--success); }
+    .alert.show { display: block; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .danger-zone { border-color: rgba(255,77,109,0.3); }
+    .danger-zone .card-title { color: var(--error); }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-dot"></div>AuthKit</div>
+    <nav class="nav">
+      <a class="nav-item" href="/dashboard"><span class="icon">⬡</span> Dashboard</a>
+      <a class="nav-item active" href="/profile"><span class="icon">◎</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar" id="avatarInitial">?</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarName">Loading...</div>
+          <div class="user-role" id="sidebarRole">—</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <h1>Profile</h1>
+      <p>Manage your account information</p>
+    </div>
+
+    <div class="profile-hero">
+      <div class="profile-avatar" id="profileAvatar">?</div>
+      <div class="profile-info">
+        <h2 id="profileName">Loading...</h2>
+        <p id="profileEmail">—</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Account Information</div>
+      <div class="alert error" id="errorAlert"></div>
+      <div class="alert success" id="successAlert"></div>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="username" placeholder="Username" />
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" readonly />
+      </div>
+      <div class="field">
+        <label>Role</label>
+        <input type="text" id="role" readonly />
+      </div>
+      <div class="field">
+        <label>User ID</label>
+        <input type="text" id="userId" readonly style="font-family:monospace;font-size:12px" />
+      </div>
+    </div>
+
+    <div class="card danger-zone">
+      <div class="card-title">Sessions</div>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Sign out of all devices by logging out. Your current session will be invalidated.</p>
+      <button class="btn" style="background:transparent;border:1px solid var(--error);color:var(--error);box-shadow:none" onclick="logout()">
+        Sign out of all devices
+      </button>
+    </div>
+  </main>
+
+  <script src="/public/auth.js"></script>
+  <script>
+    if (!requireAuth()) throw new Error('Not authenticated');
+
+    async function loadProfile() {
+      const res = await authFetch(`${API}/users/me`);
+      if (!res) return;
+      const data = await res.json();
+      const user = data.user;
+
+      document.getElementById('avatarInitial').textContent = user.username[0].toUpperCase();
+      document.getElementById('sidebarName').textContent = user.username;
+      document.getElementById('sidebarRole').textContent = user.role;
+      document.getElementById('profileAvatar').textContent = user.username[0].toUpperCase();
+      document.getElementById('profileName').textContent = user.username;
+      document.getElementById('profileEmail').textContent = user.email;
+      document.getElementById('username').value = user.username;
+      document.getElementById('email').value = user.email;
+      document.getElementById('role').value = user.role;
+      document.getElementById('userId').value = user.id;
+    }
+
+    function showAlert(type, msg) {
+      const el = document.getElementById(type === 'error' ? 'errorAlert' : 'successAlert');
+      el.textContent = msg; el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>

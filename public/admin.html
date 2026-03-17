@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel — AuthKit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #111118; --surface2: #16161f;
+      --border: #1e1e2e; --accent: #6c63ff; --accent-glow: rgba(108,99,255,0.25);
+      --text: #f0f0f5; --muted: #6b6b80; --error: #ff4d6d; --success: #3dffa0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); min-height: 100vh; }
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px; opacity: 0.3; pointer-events: none;
+    }
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 240px;
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 28px 20px; z-index: 10;
+    }
+    .logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; margin-bottom: 40px; }
+    .logo-dot { width: 9px; height: 9px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+    .nav { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted); transition: all 0.15s; text-decoration: none; }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: rgba(108,99,255,0.15); color: var(--accent); }
+    .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+    .sidebar-footer { border-top: 1px solid var(--border); padding-top: 20px; }
+    .user-chip { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface2); margin-bottom: 10px; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #a78bfa); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .user-info { overflow: hidden; }
+    .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .logout-btn { width: 100%; padding: 10px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+    .logout-btn:hover { border-color: var(--error); color: var(--error); background: rgba(255,77,109,0.05); }
+    .main { margin-left: 240px; padding: 40px; position: relative; z-index: 1; }
+    .page-header { margin-bottom: 36px; display: flex; align-items: flex-start; justify-content: space-between; }
+    .page-header h1 { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+    .page-header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .admin-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(61,255,160,0.1); border: 1px solid rgba(61,255,160,0.3); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--success); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; animation: fadeUp 0.4s ease both; }
+    .stat-card:nth-child(2) { animation-delay: 0.05s; } .stat-card:nth-child(3) { animation-delay: 0.1s; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+    .stat-value { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; animation: fadeUp 0.4s ease 0.15s both; }
+    .card-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+    .search-input {
+      padding: 8px 14px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 13px; outline: none; width: 200px;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); font-weight: 600; padding: 14px 24px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
+    td { padding: 16px 24px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .user-cell { display: flex; align-items: center; gap: 12px; }
+    .row-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #a78bfa); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .row-name { font-weight: 500; }
+    .row-email { font-size: 12px; color: var(--muted); }
+    .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge.user { background: rgba(108,99,255,0.15); color: var(--accent); }
+    .badge.admin { background: rgba(61,255,160,0.15); color: var(--success); }
+    .action-btn {
+      padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1px solid; font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+    }
+    .promote-btn { border-color: rgba(61,255,160,0.4); color: var(--success); background: rgba(61,255,160,0.05); }
+    .promote-btn:hover { background: rgba(61,255,160,0.15); }
+    .demote-btn { border-color: rgba(255,77,109,0.4); color: var(--error); background: rgba(255,77,109,0.05); }
+    .demote-btn:hover { background: rgba(255,77,109,0.15); }
+    .toast {
+      position: fixed; bottom: 28px; right: 28px;
+      padding: 14px 20px; border-radius: 10px; font-size: 14px;
+      font-weight: 500; z-index: 100; opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      transform: translateY(10px); pointer-events: none;
+    }
+    .toast.success { background: rgba(61,255,160,0.15); border: 1px solid rgba(61,255,160,0.4); color: var(--success); }
+    .toast.error { background: rgba(255,77,109,0.15); border: 1px solid rgba(255,77,109,0.4); color: var(--error); }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .empty { text-align: center; padding: 48px; color: var(--muted); font-size: 14px; }
+    .id-text { font-family: monospace; font-size: 11px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-dot"></div>AuthKit</div>
+    <nav class="nav">
+      <a class="nav-item" href="/dashboard"><span class="icon">⬡</span> Dashboard</a>
+      <a class="nav-item" href="/profile"><span class="icon">◎</span> Profile</a>
+      <a class="nav-item active" href="/admin"><span class="icon">◈</span> Admin Panel</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar" id="avatarInitial">?</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarName">Loading...</div>
+          <div class="user-role" id="sidebarRole">admin</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Admin Panel</h1>
+        <p>Manage users and roles</p>
+      </div>
+      <div class="admin-badge">⬡ Admin Access</div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value" id="totalUsers">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Admins</div>
+        <div class="stat-value" id="totalAdmins" style="color:var(--success)">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Regular Users</div>
+        <div class="stat-value" id="totalRegular" style="color:var(--accent)">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">All Users</div>
+        <input class="search-input" type="text" placeholder="Search users..." oninput="filterUsers(this.value)" />
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>ID</th>
+            <th>Role</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="userTableBody">
+          <tr><td colspan="4" class="empty">Loading users...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/public/auth.js"></script>
+  <script>
+    if (!requireAuth('admin')) throw new Error('Admin only');
+
+    let allUsers = [];
+    const currentUser = getUser();
+
+    // Load sidebar
+    document.getElementById('sidebarName').textContent = currentUser?.username || '—';
+    document.getElementById('avatarInitial').textContent = (currentUser?.username || '?')[0].toUpperCase();
+
+    function showToast(type, msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = `toast ${type} show`;
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    function renderTable(users) {
+      const tbody = document.getElementById('userTableBody');
+      if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No users found</td></tr>';
+        return;
+      }
+      tbody.innerHTML = users.map(user => {
+        const isMe = user.id === currentUser?.id;
+        const isAdmin = user.role === 'admin';
+        const actionBtn = isMe
+          ? `<span style="font-size:12px;color:var(--muted)">You</span>`
+          : isAdmin
+            ? `<button class="action-btn demote-btn" onclick="updateRole('${user.id}', 'user')">Demote to User</button>`
+            : `<button class="action-btn promote-btn" onclick="updateRole('${user.id}', 'admin')">Promote to Admin</button>`;
+        return `
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="row-avatar">${user.username[0].toUpperCase()}</div>
+                <div>
+                  <div class="row-name">${user.username}</div>
+                  <div class="row-email">${user.email}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="id-text">${user.id.slice(0, 8)}...</span></td>
+            <td><span class="badge ${user.role}">${user.role}</span></td>
+            <td>${actionBtn}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    function filterUsers(query) {
+      const q = query.toLowerCase();
+      renderTable(allUsers.filter(u =>
+        u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      ));
+    }
+
+    async function loadUsers() {
+      const res = await authFetch(`${API}/users/`);
+      if (!res) return;
+      const data = await res.json();
+      allUsers = data.users;
+
+      document.getElementById('totalUsers').textContent = allUsers.length;
+      document.getElementById('totalAdmins').textContent = allUsers.filter(u => u.role === 'admin').length;
+      document.getElementById('totalRegular').textContent = allUsers.filter(u => u.role === 'user').length;
+
+      renderTable(allUsers);
+    }
+
+    async function updateRole(userId, role) {
+      const res = await authFetch(`${API}/users/${userId}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role })
+      });
+      if (!res) return;
+      const data = await res.json();
+      if (res.ok) {
+        showToast('success', `User ${role === 'admin' ? 'promoted to admin' : 'demoted to user'}`);
+        await loadUsers(); // refresh table
+      } else {
+        showToast('error', data.error || 'Failed to update role');
+      }
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>

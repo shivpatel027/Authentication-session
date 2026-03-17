@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — AuthKit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --accent: #6c63ff;
+      --accent-glow: rgba(108,99,255,0.25);
+      --text: #f0f0f5;
+      --muted: #6b6b80;
+      --error: #ff4d6d;
+      --success: #3dffa0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.4;
+    }
+    .bg-glow {
+      position: fixed;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(108,99,255,0.12), transparent 70%);
+      top: -100px; left: 50%; transform: translateX(-50%);
+      z-index: 0; pointer-events: none;
+    }
+    .card {
+      position: relative; z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 44px;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 0 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(108,99,255,0.08);
+      animation: fadeUp 0.5s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px; font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 32px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-dot {
+      width: 10px; height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent);
+    }
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px; font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      color: var(--muted); font-size: 14px;
+      margin-bottom: 32px;
+    }
+    .field { margin-bottom: 18px; }
+    label {
+      display: block; font-size: 12px;
+      font-weight: 500; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+    input {
+      width: 100%; padding: 13px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    input::placeholder { color: var(--muted); }
+    .btn {
+      width: 100%; padding: 14px;
+      background: var(--accent);
+      color: #fff; border: none;
+      border-radius: 10px; cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-size: 15px; font-weight: 600;
+      letter-spacing: 0.3px;
+      margin-top: 8px;
+      transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .btn:hover { opacity: 0.9; box-shadow: 0 4px 30px rgba(108,99,255,0.45); }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .divider {
+      text-align: center; color: var(--muted);
+      font-size: 13px; margin: 22px 0;
+      position: relative;
+    }
+    .divider::before, .divider::after {
+      content: ''; position: absolute;
+      top: 50%; width: 42%; height: 1px;
+      background: var(--border);
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+    .footer-text {
+      text-align: center; font-size: 14px;
+      color: var(--muted);
+    }
+    .footer-text a {
+      color: var(--accent); text-decoration: none; font-weight: 500;
+    }
+    .footer-text a:hover { text-decoration: underline; }
+    .alert {
+      padding: 12px 16px; border-radius: 8px;
+      font-size: 13px; margin-bottom: 18px;
+      display: none;
+    }
+    .alert.error { background: rgba(255,77,109,0.1); border: 1px solid rgba(255,77,109,0.3); color: var(--error); }
+    .alert.success { background: rgba(61,255,160,0.1); border: 1px solid rgba(61,255,160,0.3); color: var(--success); }
+    .alert.show { display: block; animation: fadeUp 0.3s ease; }
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+  <div class="card">
+    <div class="logo"><div class="logo-dot"></div>AuthKit</div>
+    <h1>Welcome back</h1>
+    <p class="subtitle">Sign in to your account to continue</p>
+    <div class="alert error" id="errorAlert"></div>
+    <div class="alert success" id="successAlert"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="you@example.com" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="••••••••" />
+    </div>
+    <button class="btn" id="loginBtn" onclick="handleLogin()">Sign in</button>
+    <div class="divider">or</div>
+    <div class="footer-text">Don't have an account? <a href="/signup">Sign up</a></div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3000';
+
+    // Redirect if already logged in
+    if (localStorage.getItem('accessToken')) {
+      const role = localStorage.getItem('role');
+      window.location.href = role === 'admin' ? '/admin' : '/dashboard';
+    }
+
+    function showAlert(type, msg) {
+      const el = document.getElementById(type === 'error' ? 'errorAlert' : 'successAlert');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('loginBtn');
+
+      if (!email || !password) return showAlert('error', 'Please fill in all fields');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Signing in...';
+
+      try {
+        const res = await fetch(`${API}/users/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showAlert('error', data.error || 'Login failed');
+        } else {
+          localStorage.setItem('accessToken', data.accessToken);
+          localStorage.setItem('refreshToken', data.refreshToken);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('role', data.user.role);
+          showAlert('success', 'Login successful! Redirecting...');
+          setTimeout(() => {
+            window.location.href = data.user.role === 'admin' ? '/admin' : '/dashboard';
+          }, 800);
+        }
+      } catch (err) {
+        showAlert('error', 'Could not connect to server');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Sign in';
+      }
+    }
+
+    // Allow Enter key
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+  </script>
+</body>
+</html>
