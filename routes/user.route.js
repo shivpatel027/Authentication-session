@@ -5,26 +5,26 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { authenticate } from "../middleware/auth.middleware.js";
+import { authenticate, authorize } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
-// const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is not set");
-// if (!JWT_REFRESH_SECRET) throw new Error("JWT_REFRESH_SECRET environment variable is not set");
+if (!JWT_REFRESH_SECRET) throw new Error("JWT_REFRESH_SECRET environment variable is not set");
 
-// Helper: generate tokens
+// Role is now included in the token so middleware can check it without a DB hit
 const generateAccessToken = (user) =>
-  jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: "15m" });
+  jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "15m" });
 
 const generateRefreshToken = () => crypto.randomBytes(64).toString("hex");
 
-// GET current user (protected)
+// GET current user (any authenticated user)
 router.get("/me", authenticate, async (req, res) => {
   try {
     const [user] = await db
-      .select({ id: usersTable.id, username: usersTable.username, email: usersTable.email })
+      .select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role })
       .from(usersTable)
       .where(eq(usersTable.id, req.user.userId));
 
@@ -37,7 +37,45 @@ router.get("/me", authenticate, async (req, res) => {
   }
 });
 
-// SIGNUP
+// GET all users — admin only
+router.get("/", authenticate, authorize("admin"), async (req, res) => {
+  try {
+    const users = await db
+      .select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, created_at: usersTable.created_at })
+      .from(usersTable);
+
+    res.json({ users });
+  } catch (err) {
+    console.error("Get all users error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// UPDATE a user's role — admin only
+router.patch("/:id/role", authenticate, authorize("admin"), async (req, res) => {
+  try {
+    const { role } = req.body;
+
+    if (!["admin", "user"].includes(role)) {
+      return res.status(400).json({ error: "Invalid role, must be 'admin' or 'user'" });
+    }
+
+    const [updated] = await db
+      .update(usersTable)
+      .set({ role })
+      .where(eq(usersTable.id, req.params.id))
+      .returning({ id: usersTable.id, role: usersTable.role });
+
+    if (!updated) return res.status(404).json({ error: "User not found" });
+
+    res.json({ message: "Role updated", user: updated });
+  } catch (err) {
+    console.error("Update role error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// SIGNUP — always creates a regular user, role cannot be set manually
 router.post("/signup", async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -67,7 +105,7 @@ router.post("/signup", async (req, res) => {
 
     const [newUser] = await db
       .insert(usersTable)
-      .values({ username, email, password: hashedPassword })
+      .values({ username, email, password: hashedPassword, role: "user" }) // role always defaults to user on signup
       .returning({ id: usersTable.id });
 
     res.status(201).json({ message: "User created successfully", userId: newUser.id });
@@ -77,7 +115,7 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// LOGIN — issues access token + refresh token, stores session in DB
+// LOGIN
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -96,12 +134,10 @@ router.post("/login", async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) return res.status(401).json({ error: "Invalid credentials" });
 
-    // Generate both tokens
-    const accessToken = generateAccessToken(user);
+    const accessToken = generateAccessToken(user); // role is embedded in token
     const refreshToken = generateRefreshToken();
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    // Store refresh token in DB
     await db.insert(sessionsTable).values({
       user_id: user.id,
       refresh_token: refreshToken,
@@ -110,9 +146,9 @@ router.post("/login", async (req, res) => {
 
     res.json({
       message: "Login successful",
-      accessToken,           // short-lived (15min), use for API requests
-      refreshToken,          // long-lived (30d), use only to get new access tokens
-      user: { id: user.id, username: user.username, email: user.email },
+      accessToken,
+      refreshToken,
+      user: { id: user.id, username: user.username, email: user.email, role: user.role },
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -120,7 +156,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// REFRESH — exchange a valid refresh token for a new access token
+// REFRESH
 router.post("/refresh", async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -129,7 +165,6 @@ router.post("/refresh", async (req, res) => {
       return res.status(400).json({ error: "Refresh token required" });
     }
 
-    // Look up session in DB
     const [session] = await db
       .select()
       .from(sessionsTable)
@@ -139,13 +174,11 @@ router.post("/refresh", async (req, res) => {
       return res.status(401).json({ error: "Invalid refresh token" });
     }
 
-    // Check expiry
     if (new Date() > session.expires_at) {
       await db.delete(sessionsTable).where(eq(sessionsTable.id, session.id));
       return res.status(401).json({ error: "Refresh token expired, please log in again" });
     }
 
-    // Fetch user and issue new access token
     const [user] = await db
       .select()
       .from(usersTable)
@@ -162,7 +195,7 @@ router.post("/refresh", async (req, res) => {
   }
 });
 
-// LOGOUT — deletes the session from DB, invalidating the refresh token
+// LOGOUT
 router.post("/logout", authenticate, async (req, res) => {
   try {
     const { refreshToken } = req.body;
